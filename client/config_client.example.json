@@ -1,5 +1,6 @@
 {
     "internal_port": 50000,
+    "api_host": "127.0.0.1",
     "api_port": 8081,
     "proxy_port": 8080,
     "remote_enable": true,
