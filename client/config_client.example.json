@@ -3,5 +3,6 @@
     "api_port": 8081,
     "proxy_port": 8080,
     "remote_enable": true,
-    "remote_url": "https://api.example.com"
+    "remote_url": "https://api.example.com",
+    "remote_name": "default"
 }

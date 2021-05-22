@@ -7,8 +7,8 @@ path = 'config_client.json'
 class ConfigManager():
     def __init__(self) -> None:
         if not os.path.exists(path):
-            self.json = {}
-            print("没有找到设置文件")
+            print("没有找到设置文件，将采用环境变量获取设置")
+            self.json = os.environ
             return
         with open(path, 'r') as f:
             self.json = json.load(f)
@@ -17,5 +17,5 @@ class ConfigManager():
         if key in self.json:
             return self.json[key]
         else:
-            print(f"设置文件中没有这个key:{key}")
+            print(f"设置中没有这个key:{key}")
             return None

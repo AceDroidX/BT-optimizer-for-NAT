@@ -3,7 +3,9 @@ import pystun
 import qbtapi
 import daemon_client
 import time
+import threading
 import asyncio
+import traceback
 import config
 
 
@@ -26,12 +28,18 @@ def start_mitm(proxy_port, external_port):
 def stop_mitm():
     global m
     m.shutdown()
+    print("mitm已停止")
 
 
 def nat_test(source_port):
     for i in range(5):
-        nat_type, external_ip, external_port = pystun.get_ip_info(
-            source_port=source_port, stun_host='stun.qq.com')
+        try:
+            nat_type, external_ip, external_port = pystun.get_ip_info(
+                source_port=source_port, stun_host='stun.qq.com')
+        except Exception as e:
+            traceback.print_exc()
+            nat_type = "Error"
+            external_ip, external_port = (None, None)
         if nat_type == pystun.FullCone:
             print(f"第{i}次测试成功:{nat_type, external_ip, external_port}")
             return True, nat_type, external_ip, external_port
@@ -43,8 +51,9 @@ def nat_test(source_port):
         return False, nat_type, external_ip, external_port
 
 
-def main():
-    cfg = config.ConfigManager()
+def run_once(cfg):
+    new_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(new_loop)
     internal_port = cfg.read("internal_port")
     print('检查设定的端口是否已被占用')
     if qbtapi.get_listen_port(cfg.read("api_port")) == internal_port:
@@ -56,18 +65,37 @@ def main():
     if not result:
         return
     port_map = [internal_port, external_port]
-    # loop = asyncio.get_event_loop()
-    # loop.run_in_executor(None, start_mitm,(external_port,))
     print("休眠一秒")
     time.sleep(1)
     print('改回设定好的端口')
     qbtapi.set_listen_port(cfg.read("api_port"), internal_port)
     if cfg.read("remote_enable"):
         print("设置远程心跳地址")
+        global external
+        external = [external_ip, external_port]
         daemon_client.set_remote_heartbeat(
-            external_ip, external_port, cfg.read("remote_url"))
+            external_ip, external_port, cfg.read('remote_name'), cfg.read("remote_url"))
     print('修改Tracker里的port信息')
     start_mitm(cfg.read("proxy_port"), external_port)
+    # loop = asyncio.get_event_loop()
+    # loop.run_in_executor(
+    #     None, start_mitm, (cfg.read("proxy_port"), external_port,))
+
+
+def main():
+    cfg = config.ConfigManager()
+    while True:
+        t = threading.Thread(target=run_once, args=(cfg,))
+        t.start()
+        for _ in range(5):
+            time.sleep(60)
+            if cfg.read("remote_enable"):
+                global external
+                print(f"设置远程心跳地址{external[0]}:{external[1]}")
+                daemon_client.set_remote_heartbeat(
+                    external[0], external[1], cfg.read('remote_name'), cfg.read("remote_url"))
+        # time.sleep(60)
+        stop_mitm()
 
 
 if __name__ == "__main__":
