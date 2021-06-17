@@ -10,7 +10,7 @@ import config
 import logging
 
 
-def start_mitm(proxy_port, external_port):
+def start_mitm(proxy_port, external_port, http_rewrite):
     # https://github.com/sunfkny/genshin-gacha-export/blob/main/main.py
     from mitmproxy.options import Options
     from mitmproxy.proxy.config import ProxyConfig
@@ -22,7 +22,7 @@ def start_mitm(proxy_port, external_port):
     global m
     m = DumpMaster(options, with_termlog=False, with_dumper=False)
     m.server = ProxyServer(config)
-    m.addons.add(MitmAddon.ModifyQuery(external_port))
+    m.addons.add(MitmAddon.ModifyQuery(external_port, http_rewrite))
     m.run()
 
 
@@ -78,8 +78,8 @@ def run_once(cfg):
         external = [external_ip, external_port]
         daemon_client.set_remote_heartbeat(
             external_ip, external_port, cfg.read('remote_name'), cfg.read("remote_url"))
-    logging.info('修改Tracker里的port信息')
-    start_mitm(cfg.read("proxy_port"), external_port)
+    logging.info('修改通知Tracker的信息')
+    start_mitm(cfg.read("proxy_port"), external_port, cfg.read("http_rewrite"))
     # loop = asyncio.get_event_loop()
     # loop.run_in_executor(
     #     None, start_mitm, (cfg.read("proxy_port"), external_port,))

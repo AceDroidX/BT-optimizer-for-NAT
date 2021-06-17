@@ -19,4 +19,5 @@ services:
      - remote_enable=true
      - remote_url=https://api.example.com
      - remote_name=default
+     - http_rewrite=example.com
 ```
